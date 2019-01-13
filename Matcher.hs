@@ -126,3 +126,9 @@ matchP matcher dict = dict >>= (\word -> if [] `S.member` (matcher word) then [w
   Todo: Parse regex. Parse: .*a[ac][a-c][!abc](ab)^(ab)+@#><
   mapMonotonic for lazy output for set
 -}
+{-
+ch <- loadD "elements.txt"
+c1=map (map toLower) ch
+cd = S.fromList c1
+  filter ((>=10).length)  $ matchP (zeroOrMore (strs cd)) dl
+=}
