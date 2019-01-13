@@ -45,6 +45,12 @@ lsing x = [x]
 splits :: [a] -> [([a],[a])]
 splits s = map (\n -> splitAt n s) [0..(length s)]
 
+dict' :: IO (S.Set String)
+dict' = do
+  s <- readFile "words.txt"
+  return $ S.fromList $ lines s
+
+
 -- * Matcher
 
 -- | From a string, give the set of possibilities for the remainder after the match. For example, matching any single character (`any`) would simply be a singleton containing the tail of the string, if the string is nonempty.
@@ -56,7 +62,7 @@ ch :: (Eq a) => a -> Matcher a
 ch c = str [c]
 
 chs :: (Eq a, Ord a) => [a] -> Matcher a
-chs li = strs (map lsing li)
+chs li = strs (S.fromList $ map lsing li)
 
 chNot :: (Eq a) => [a] -> Matcher a
 chNot li word = if not (null word) && not ((word!!0) `elem` li) then S.singleton $ tail word else S.empty
@@ -79,12 +85,11 @@ str s word = if L.isPrefixOf s word
              then S.singleton $ drop (length s) word
              else S.empty
 
---inefficient
-strs :: (Ord a, Eq a) => [[a]] -> Matcher a
-strs d word = S.fromList $ map snd $ filter ((`L.elem` d) . fst) $ splits word
+strs :: (Ord a, Eq a) => S.Set [a] -> Matcher a
+strs d word = S.fromList $ map snd $ filter ((`S.member` d) . fst) $ splits word
 
-strsRev :: (Ord a, Eq a) => [[a]] -> Matcher a
-strsRev li = strs (map reverse li)
+strsRev :: (Ord a, Eq a) => S.Set [a] -> Matcher a
+strsRev li = strs (S.map reverse li)
 
 anyC :: Matcher a
 anyC word = if null word then S.empty else S.singleton (tail word)
@@ -94,11 +99,11 @@ star word = S.fromList (L.tails word)
 
 -- * Combinators
 
-filterM :: (Ord a) => ([a] -> Bool) -> Matcher a -> Matcher a
-filterM f m1 word = S.filter (\result -> f $ take ((length word) - (length result)) word) (m1 word)
+filterP :: (Ord a) => ([a] -> Bool) -> Matcher a -> Matcher a
+filterP f m1 word = S.filter (\result -> f $ take ((length word) - (length result)) word) (m1 word)
 
-repeatM :: (Ord a) => Int -> Matcher a -> Matcher a
-repeatM n matcher = foldl1 (.>=>) (replicate n matcher)
+repeatP :: (Ord a) => Int -> Matcher a -> Matcher a
+repeatP n matcher = foldl1 (.>=>) (replicate n matcher)
 
 zeroOrMore :: (Ord a) => Matcher a -> Matcher a
 zeroOrMore matcher word = (S.singleton word) `S.union` ((matcher word) .>>= (zeroOrMore matcher))
@@ -119,4 +124,5 @@ matchP matcher dict = dict >>= (\word -> if [] `S.member` (matcher word) then [w
 
 {-
   Todo: Parse regex. Parse: .*a[ac][a-c][!abc](ab)^(ab)+@#><
+  mapMonotonic for lazy output for set
 -}
