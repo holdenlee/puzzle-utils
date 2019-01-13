@@ -13,6 +13,7 @@ module Matcher where
 import System.Environment
 import Control.Monad
 import Data.Tree
+import Data.Either
 import qualified Data.List as L
 import qualified Data.Map.Strict as Map
 import qualified Data.Hashable
@@ -23,6 +24,10 @@ import Utilities
 import Data.String.Utils
 import Data.Char
 --import Text.Regex.Posix
+
+import Text.ParserCombinators.Parsec
+--import qualified Text.Parsec.Token as P
+--import Text.Parsec.Language (emptyDef)
 
 --import Search
 
@@ -77,8 +82,8 @@ consonant = chs "bcdfghjklmnpqrstvwxyz"
 chrange :: (Ord a, Eq a, Enum a) => a -> a -> Matcher a
 chrange x y = chs [x..y]
 
-letter :: Matcher Char
-letter = chrange 'a' 'z'
+letterP :: Matcher Char
+letterP = chrange 'a' 'z'
 
 str :: (Eq a) => [a] -> Matcher a
 str s word = if L.isPrefixOf s word 
@@ -120,7 +125,89 @@ matchP :: (Ord a) => Matcher a -> [[a]] -> [[a]]
 matchP matcher dict = dict >>= (\word -> if [] `S.member` (matcher word) then [word] else [])
 --S.null (matcher word) then [] else [word])
 
---compileRegex :: String -> Matcher a
+-- * Parser
+
+-- could also have done everything above with parsec? but I don't know how backtracking works in parsec.
+
+type PM = Parser (Matcher Char)
+
+insideBrackets :: Parser String
+insideBrackets = try 
+                 (do
+                   ls <-many1 letter
+                   char ']'
+                   return ls
+                 ) <|> 
+                 (do 
+                   char '!'
+                   lets <- many1 letter
+                   char ']'
+                   return (['a'..'z'] L.\\ lets)
+                 ) <|>
+                 do {
+                   beg <- letter;
+                   char '-';
+                   end <- letter;
+                   char ']';
+                   return [beg..end]
+                 }
+
+bracketedExpression :: PM
+bracketedExpression = 
+    do
+      char '['
+      set <- insideBrackets
+      --char ']'
+      let m = chs set
+      (char '^' >> return (zeroOrMore m)) <|> (char '+' >> return (oneOrMore m)) <|> (return m)
+
+parenExpression :: PM
+parenExpression = 
+    do
+      char '('
+      m <- expr
+      char ')'
+      (char '^' >> return (zeroOrMore m)) <|> (char '+' >> return (oneOrMore m)) <|> (return m)
+
+vowelE = char '@' >> return vowel
+consonantE = char '#' >> return consonant 
+dotE = char '.' >> return anyC
+starE = char '*' >> return star
+letterE = letter >>= (return . ch)
+--how to do > and < ? make these 'd ->' instead.
+
+expr :: PM
+expr = do
+  li <- many1 (letterE <|> dotE <|> starE <|> vowelE <|> consonantE <|> parenExpression <|> bracketedExpression)
+  return (foldl1 (&) li)
+
+parseExpr :: PM 
+parseExpr = do
+  m <- expr
+  eof
+  return m
+
+compileRegex :: String -> Matcher Char
+compileRegex s = fromRight (parse expr "error" s)
+
+matchRegex s = matchP (compileRegex s)
+
+main :: IO ()
+main = do
+  d' <- dict'
+  let d = S.toList d'
+  let l = map (\s -> matchRegex s d) ["l.......v",
+                                  "..i[sz]e",
+                                  "[l-p].[m-r].[w-z]",
+                                  "#@#@#@#@#@#@#@",
+                                  "xo*",
+                                  "x*a",
+                                  "*xj*",
+                                  ".j*k*",
+                                  "*a*e*i*o*u*",
+                                  "*@@@@*"
+                                 ]
+  putStrLn (show l)
 
 {-
   Todo: Parse regex. Parse: .*a[ac][a-c][!abc](ab)^(ab)+@#><
@@ -131,4 +218,4 @@ ch <- loadD "elements.txt"
 c1=map (map toLower) ch
 cd = S.fromList c1
   filter ((>=10).length)  $ matchP (zeroOrMore (strs cd)) dl
-=}
+-}
