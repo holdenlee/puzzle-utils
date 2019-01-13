@@ -1,0 +1,32 @@
+let a = makeBoxes 4
+let a1 = bulkElim 4 [(1, 'E', 6, 2, 'E'), (1, 'E', 1, 1, 'N'), (1, 'E', 2, 3, 'W'), (1, 'E', 1, 1, 'N')] a
+let a2 = bulkElim 4 [(2, 'E', 3, 1, 'N'), (2, 'E', 3, 3, 'S'), (2, 'E', 6, 2, 'E'), (2, 'E', 3, 1, 'S')] a1
+
+let a1 = bulkElim 4 [(1, 'E', 6, 2, 'E'), (1, 'E', 1, 1, 'N'), (1, 'E', 2, 3, 'W'), (1, 'E', 1, 1, 'N')] a
+
+
+"2122221223322222"
+
+let a = makeBoxes2 4 "2122221223322222"
+let a1 = bulkElim 4 [(1, 'E', 6, 2, 'E'), (1, 'E', 1, 1, 'N'), (1, 'E', 2, 3, 'W'), (1, 'E', 1, 1, 'N')] a
+
+let a2 = bulkElim 4 [(2, 'E', 3, 1, 'N'), (2, 'E', 3, 3, 'S'), (2, 'E', 6, 2, 'E'), (2, 'E', 3, 1, 'S')] a1
+
+
+let a = makeBoxes2 5 "/lll//333/l333l/333l///ll"
+let a1 = bulkElim 5 [(5, 'W', 5, 4, 'S'), (5, 'S', 6, 4, 'N'), (2, 'E', 7, 5, 'N'), (1, 'N', 45, 4, 'E')] a
+
+
+let a = makeBoxes 3
+let b = a!!0
+let a1 = evolve' 3 1 'E' b
+
+let a1 = elim d x c
+let a1 = bulkElim 3 [(1, 'E', 4, 1, 'E'), (1, 'E', 1, 1, 'N'), (1, 'E', 2, 3, 'W')] a
+
+let b=a!!0
+let (x1,x2,x3,a1) = evolve' 3 1 'E' b
+(x1,x2,x3,a1)
+let (x1,x2,x3,a2) = evolve' 3 1 'E' a1
+(x1,x2,x3,a2)
+let (x1,x2,x3,a1) = evolve' 3 1 'E' a2
