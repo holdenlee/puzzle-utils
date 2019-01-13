@@ -30,6 +30,7 @@ import Search
 af :: (IO [String]) -> (String -> Bool) -> IO [String]
 af iod f = fmap (filter f) iod
 
+-- |Whether two strings are anagrams.
 anagram :: String -> String -> Bool
 anagram s1 s2 = (L.sort s1) == (L.sort s2)
 
@@ -38,12 +39,14 @@ sandwich w1 w2 = do
   d <- dict
   return $ ((map (drop (length w1)) $ filter (\x -> w1 `L.isPrefixOf` x) d)) `L.intersect` ((map (dropLast (length w2)) $ filter (\x -> w2 `L.isSuffixOf` x) d))
 
+-- |Computes Hamming distance between 2 strings. If different length, returns 9999.
 hamming :: String -> String -> Int
 hamming s1 s2 = case (s1, s2) of
                   ([], []) -> 0
                   (a:r1, b:r2) -> ((hamming r1 r2)+(if a==b then 0 else 1))
                   _ -> 9999
 
+-- |Computes Hamming distance between 2 strings. If different length, returns None.
 hammingM :: String -> String -> Maybe Int
 hammingM s1 s2 = case (s1, s2) of
                    ([], []) -> Just 0
