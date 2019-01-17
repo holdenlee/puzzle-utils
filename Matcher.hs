@@ -45,7 +45,10 @@ lsing x = [x]
 --S.unions $ map g $ S.toList (f x)
 
 (.>>=) :: (Ord b, Ord c) => S.Set b -> (b -> S.Set c) -> (S.Set c)
-(.>>=) s g = S.unions $ S.toList $ S.mapMonotonic g s
+(.>>=) s g = S.unions $ map g $ S.toList s
+
+(.>>=!) :: (Ord b, Ord c) => S.Set b -> (b -> S.Set c) -> (S.Set c)
+(.>>=!) s g = S.unions $ S.toList $ S.map g s
 
 splits :: [a] -> [([a],[a])]
 splits s = map (\n -> splitAt n s) [0..(length s)]
@@ -59,7 +62,7 @@ dict' = do
 
 -- * Matcher
 
--- | From a string, give the set of possibilities for the remainder after the match. For example, matching any single character (`any`) would simply be a singleton containing the tail of the string, if the string is nonempty.
+-- | From a string, give the list of possibilities for the remainder after the match. For example, matching any single character (`any`) would simply be a singleton containing the tail of the string, if the string is nonempty.
 type Matcher a = [a] -> S.Set [a]
 
 -- * Basic matching
@@ -123,8 +126,12 @@ oneOrMore matcher = matcher .>=> (zeroOrMore matcher)
 -- * Execution
 
 matchP :: (Ord a) => Matcher a -> S.Set [a] -> S.Set [a]
-matchP matcher dict = dict .>>= (\word -> if [] `S.member` (matcher word) then S.singleton word else S.empty)
+matchP matcher dict = S.fromDistinctAscList $ (S.toList dict) >>= (\word -> if [] `S.member` (matcher word) then [word] else [])
 --S.null (matcher word) then [] else [word])
+
+matchP' :: (Ord a) => Matcher a -> [[a]] -> [[a]]
+matchP' matcher dict = dict >>= (\word -> if [] `S.member` (matcher word) then [word] else [])
+
 
 -- * Parser
 
@@ -195,10 +202,13 @@ parseExpr d = do
   return m
 
 compileRegex :: String -> S.Set String -> Matcher Char
-compileRegex s d = fromRight (parse (parseExpr d) "error" s)
+compileRegex s d = fromRight (parse (expr d) "error" s)
 
 matchRegex :: String -> S.Set String -> S.Set String
 matchRegex s d = matchP (compileRegex s d) d
+
+matchRegex' :: String -> S.Set String -> [String]
+matchRegex' s d = matchP' (compileRegex s d) (S.toList d)
 
 
 {-
