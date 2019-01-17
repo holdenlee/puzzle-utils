@@ -45,16 +45,17 @@ lsing x = [x]
 --S.unions $ map g $ S.toList (f x)
 
 (.>>=) :: (Ord b, Ord c) => S.Set b -> (b -> S.Set c) -> (S.Set c)
-(.>>=) s g = S.unions $ map g $ S.toList s
+(.>>=) s g = S.unions $ S.toList $ S.mapMonotonic g s
 
 splits :: [a] -> [([a],[a])]
 splits s = map (\n -> splitAt n s) [0..(length s)]
 
+{-
 dict' :: IO (S.Set String)
 dict' = do
   s <- readFile "words.txt"
   return $ S.fromList $ lines s
-
+-}
 
 -- * Matcher
 
@@ -121,8 +122,8 @@ oneOrMore matcher = matcher .>=> (zeroOrMore matcher)
 
 -- * Execution
 
-matchP :: (Ord a) => Matcher a -> [[a]] -> [[a]]
-matchP matcher dict = dict >>= (\word -> if [] `S.member` (matcher word) then [word] else [])
+matchP :: (Ord a) => Matcher a -> S.Set [a] -> S.Set [a]
+matchP matcher dict = dict .>>= (\word -> if [] `S.member` (matcher word) then S.singleton word else S.empty)
 --S.null (matcher word) then [] else [word])
 
 -- * Parser
@@ -161,11 +162,11 @@ bracketedExpression =
       let m = chs set
       (char '^' >> return (zeroOrMore m)) <|> (char '+' >> return (oneOrMore m)) <|> (return m)
 
-parenExpression :: PM
-parenExpression = 
+parenExpression :: S.Set String -> PM
+parenExpression d = 
     do
       char '('
-      m <- expr
+      m <- expr d
       char ')'
       (char '^' >> return (zeroOrMore m)) <|> (char '+' >> return (oneOrMore m)) <|> (return m)
 
@@ -174,40 +175,31 @@ consonantE = char '#' >> return consonant
 dotE = char '.' >> return anyC
 starE = char '*' >> return star
 letterE = letter >>= (return . ch)
+
+wordF :: S.Set String -> PM
+wordF d = char '>' >> return (strs d)
+
+wordR :: S.Set String -> PM
+wordR d = char '<' >> return (strsRev d)
 --how to do > and < ? make these 'd ->' instead.
 
-expr :: PM
-expr = do
-  li <- many1 (letterE <|> dotE <|> starE <|> vowelE <|> consonantE <|> parenExpression <|> bracketedExpression)
+expr :: S.Set String -> PM
+expr d = do
+  li <- many1 (letterE <|> dotE <|> starE <|> vowelE <|> consonantE <|> wordF d <|> wordR d <|> parenExpression d <|> bracketedExpression)
   return (foldl1 (&) li)
 
-parseExpr :: PM 
-parseExpr = do
-  m <- expr
+parseExpr :: S.Set String -> PM 
+parseExpr d = do
+  m <- expr d
   eof
   return m
 
-compileRegex :: String -> Matcher Char
-compileRegex s = fromRight (parse expr "error" s)
+compileRegex :: String -> S.Set String -> Matcher Char
+compileRegex s d = fromRight (parse (parseExpr d) "error" s)
 
-matchRegex s = matchP (compileRegex s)
+matchRegex :: String -> S.Set String -> S.Set String
+matchRegex s d = matchP (compileRegex s d) d
 
-main :: IO ()
-main = do
-  d' <- dict'
-  let d = S.toList d'
-  let l = map (\s -> matchRegex s d) ["l.......v",
-                                  "..i[sz]e",
-                                  "[l-p].[m-r].[w-z]",
-                                  "#@#@#@#@#@#@#@",
-                                  "xo*",
-                                  "x*a",
-                                  "*xj*",
-                                  ".j*k*",
-                                  "*a*e*i*o*u*",
-                                  "*@@@@*"
-                                 ]
-  putStrLn (show l)
 
 {-
   Todo: Parse regex. Parse: .*a[ac][a-c][!abc](ab)^(ab)+@#><

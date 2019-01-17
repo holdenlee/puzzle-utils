@@ -23,6 +23,7 @@ import Utilities
 import Data.String.Utils
 import Data.Char
 import Text.Regex.Posix
+import Matcher
 
 import Search
 
@@ -36,7 +37,7 @@ anagram s1 s2 = (L.sort s1) == (L.sort s2)
 
 sandwich :: String -> String -> IO [String]
 sandwich w1 w2 = do
-  d <- dict
+  d <- fmap S.toList dict
   return $ ((map (drop (length w1)) $ filter (\x -> w1 `L.isPrefixOf` x) d)) `L.intersect` ((map (dropLast (length w2)) $ filter (\x -> w2 `L.isSuffixOf` x) d))
 
 -- |Computes Hamming distance between 2 strings. If different length, returns 9999.
@@ -71,15 +72,13 @@ matches pat = (=~ (expandRE pat))
 dropLast :: Int -> [a] -> [a]
 dropLast n li = take ((length li) - n) li
 
-dict :: IO [String]
-dict = do
-  s <- readFile "words.txt"
-  return $ lines s
+dict :: IO (S.Set String)
+dict = loadD "words.txt"
 
-loadD :: String -> IO [String]
+loadD :: String -> IO (S.Set String)
 loadD d = do
   s <- readFile d
-  return $ lines s
+  return $ S.fromList $ lines s
 
 letterToInt :: Char -> Int
 letterToInt c = (ord c) - 64
@@ -186,6 +185,26 @@ seqTransR d trans start = foldl (\xs tran -> xs >>= (transPossibsR d tran)) [sta
 
 seqTransRL :: [String] -> [String] -> [String] -> [String]
 seqTransRL d trans starts = foldl (\xs tran -> xs >>= (transPossibsR d tran)) starts trans
+
+main :: IO ()
+main = do
+  d <- dict
+  --let d = S.toList d'
+  let l = map (\s -> matchRegex s d) ["l.......v",
+                                  "..i[sz]e",
+                                  "[l-p].[m-r].[w-z]",
+                                  "#@#@#@#@#@#@#@",
+                                  "xo*",
+                                  "x*a",
+                                  "*xj*",
+                                  ".j*k*",
+                                  "*a*e*i*o*u*",
+                                  "*@@@@*",
+                                  "ace>",
+                                  "hi<g"
+                                 ]
+  putStrLn (show l)
+
 
 {-seqTrans2 :: [String] -> [String] -> String -> [[String]]
 seqTrans2 d trans start = foldl (\xs tran -> map (\x -> [x]) ((last xs) >>= (transPossibs d tran))) [[start]] trans-}
